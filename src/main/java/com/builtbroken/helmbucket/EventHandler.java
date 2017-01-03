@@ -63,7 +63,7 @@ public class EventHandler
                         if (doAction)
                         {
                             world.setBlockToAir(i, j, k);
-                            entityPlayer.inventory.setInventorySlotContents(entityPlayer.inventory.currentItem, addToInventory(heldItem, entityPlayer, ItemHelmBucket.getStack(item, block)));
+                            entityPlayer.inventory.setInventorySlotContents(entityPlayer.inventory.currentItem, addToInventory(heldItem, entityPlayer, ItemHelmBucket.getStack(item, heldItem, block)));
                             entityPlayer.inventoryContainer.detectAndSendChanges();
                         }
                         return true;
@@ -74,7 +74,7 @@ public class EventHandler
                         if (doAction)
                         {
                             world.setBlockToAir(i, j, k);
-                            entityPlayer.inventory.setInventorySlotContents(entityPlayer.inventory.currentItem, addToInventory(heldItem, entityPlayer, ItemHelmBucket.getStack(item, block)));
+                            entityPlayer.inventory.setInventorySlotContents(entityPlayer.inventory.currentItem, addToInventory(heldItem, entityPlayer, ItemHelmBucket.getStack(item, heldItem, block)));
                             entityPlayer.inventoryContainer.detectAndSendChanges();
                         }
                         return true;

@@ -11,6 +11,7 @@ import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.IIcon;
 import net.minecraft.util.MovingObjectPosition;
 import net.minecraft.util.StatCollector;
@@ -45,11 +46,11 @@ public class ItemHelmBucket extends Item
 
         if (fluidMeta == 1)
         {
-            list.add(StatCollector.translateToLocal(Blocks.water.getUnlocalizedName()));
+            list.add(StatCollector.translateToLocal(Blocks.water.getUnlocalizedName() + ".name"));
         }
         else if (fluidMeta == 2)
         {
-            list.add(StatCollector.translateToLocal(Blocks.lava.getUnlocalizedName()));
+            list.add(StatCollector.translateToLocal(Blocks.lava.getUnlocalizedName() + ".name"));
         }
     }
 
@@ -124,7 +125,7 @@ public class ItemHelmBucket extends Item
         return super.getMovingObjectPositionFromPlayer(world, player, flag);
     }
 
-    public static ItemStack getStack(Item item, Block block)
+    public static ItemStack getStack(Item item, ItemStack itemToSave, Block block)
     {
         int meta = 0;
         if (item == Items.iron_helmet)
@@ -149,7 +150,10 @@ public class ItemHelmBucket extends Item
         {
             meta += 2;
         }
-        return new ItemStack(HelmBucket.itemHelmBucket, 1, meta);
+        ItemStack stack = new ItemStack(HelmBucket.itemHelmBucket, 1, meta);
+        stack.setTagCompound(new NBTTagCompound());
+        stack.getTagCompound().setTag("prevItem", itemToSave.writeToNBT(new NBTTagCompound()));
+        return stack;
     }
 
     @Override
@@ -211,22 +215,32 @@ public class ItemHelmBucket extends Item
 
                 if (this.tryPlaceContainedLiquid(world, i, j, k, stack.getItemDamage() % 1000) && !player.capabilities.isCreativeMode)
                 {
-                    int helm = stack.getItemDamage() / 1000;
-                    switch (helm)
-                    {
-                        case 0:
-                            return new ItemStack(Items.iron_helmet);
-                        case 1:
-                            return new ItemStack(Items.golden_helmet);
-                        case 2:
-                            return new ItemStack(Items.diamond_helmet);
-                    }
-                    return null;
+                    return getPreviousItem(stack);
                 }
             }
 
             return stack;
         }
+    }
+
+    public ItemStack getPreviousItem(ItemStack stack)
+    {
+        if (stack.hasTagCompound())
+        {
+            return ItemStack.loadItemStackFromNBT(stack.getTagCompound().getCompoundTag("prevItem"));
+        }
+        int helm = stack.getItemDamage() / 1000;
+        switch (helm)
+        {
+            case 0:
+                return new ItemStack(Items.iron_helmet, 1, 0);
+            case 1:
+                return new ItemStack(Items.golden_helmet, 1, 0);
+            case 2:
+                return new ItemStack(Items.diamond_helmet, 1, 0);
+        }
+        stack.stackSize--;
+        return stack;
     }
 
     /**
@@ -259,7 +273,9 @@ public class ItemHelmBucket extends Item
                     world.func_147480_a(x, y, z, true);
                 }
 
-                world.setBlock(x, y, z, getFluidForMeta(fluidMeta), 0, 3);
+                Block block = getFluidForMeta(fluidMeta);
+                world.setBlock(x, y, z, block, 0, 3);
+                block.onNeighborBlockChange(world, x, y, z, block);
             }
 
             return true;
