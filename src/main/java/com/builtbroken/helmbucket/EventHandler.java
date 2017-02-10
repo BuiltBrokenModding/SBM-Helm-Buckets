@@ -38,7 +38,7 @@ public class EventHandler
             if (item == Items.iron_helmet || item == Items.golden_helmet || item == Items.diamond_helmet)
             {
                 MovingObjectPosition movingobjectposition = HelmBucket.itemHelmBucket.getMovingObjectPositionFromPlayer(world, entityPlayer, true);
-                if (movingobjectposition.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK)
+                if (movingobjectposition != null && movingobjectposition.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK)
                 {
                     int i = movingobjectposition.blockX;
                     int j = movingobjectposition.blockY;
