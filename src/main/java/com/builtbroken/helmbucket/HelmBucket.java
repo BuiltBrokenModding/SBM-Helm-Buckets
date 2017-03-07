@@ -25,7 +25,7 @@ public class HelmBucket
     public static ItemHelmBucket itemHelmBucket;
 
     /** Information output thing */
-    public static final Logger logger = LogManager.getLogger("SBM-MagicMirror");
+    public static final Logger logger = LogManager.getLogger("SBM-HelmBucket");
 
     public static PacketManager packetHandler;
 
