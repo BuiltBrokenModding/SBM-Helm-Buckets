@@ -1,4 +1,4 @@
-item.helmbucket:helmBucket.name=Helm Bucket
-item.helmbucket:helmBucket.iron.name=Iron Helm Bucket
-item.helmbucket:helmBucket.gold.name=Gold Helm Bucket
-item.helmbucket:helmBucket.diamond.name=Diamond Helm Bucket
+item.helmbucket:HelmBucket.name=Helm Bucket
+item.helmbucket:HelmBucket.helmiron.name=Iron Helm Bucket
+item.helmbucket:HelmBucket.helmgold.name=Gold Helm Bucket
+item.helmbucket:HelmBucket.helmdiamond.name=Diamond Helm Bucket

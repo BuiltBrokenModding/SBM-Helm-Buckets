@@ -3,12 +3,15 @@ package com.builtbroken.helmbucket;
 import java.io.File;
 import java.util.HashMap;
 
+import com.builtbroken.mc.fluids.FluidModule;
 import com.builtbroken.mc.fluids.api.reg.BucketMaterialRegistryEvent;
 import com.builtbroken.mc.fluids.bucket.BucketMaterial;
 import com.builtbroken.mc.fluids.bucket.BucketMaterialHandler;
 import com.builtbroken.mc.fluids.mods.BucketHandler;
 
 import net.minecraft.block.Block;
+import net.minecraft.block.material.Material;
+import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
 import net.minecraft.inventory.EntityEquipmentSlot;
@@ -61,34 +64,39 @@ public class HelmBucket
 	public static float CHANCE_TO_LEAK = 0.03f;
 	public static float LEAK_FIRE_CHANCE = 0.4f;
 
-	public static HashMap<Item, BucketType> validHelmets = new HashMap<Item, BucketType>();
+	private static HashMap<Item, BucketType> validHelmets = new HashMap<Item, BucketType>();
 
-	public static HashMap<Integer, BucketType> helmetBuckets = new HashMap<Integer, BucketType>();
-	public static int buckets = 0;
+	private static HashMap<String, BucketType> helmetBuckets = new HashMap<String, BucketType>();
 
 	public HelmBucket()
 	{
 		MinecraftForge.EVENT_BUS.register(this);
 	}
 
+	public static void addHelmet(BucketType type) {
+		helmetBuckets.put(type.name, type);
+	}
 
-	/** DO NOT TOUCH, add Type instance to helmetBuckets and use buckets++ as your key 
-	 *  (possibly get length of map and add 1? switch to arrayList?)
-	 *  Hashmap seems not the perfect structure right now
-	 ** maybe a Set of mats and keep the IDs internal? **/
+	public static BucketType getHelmet(String name) {
+		return helmetBuckets.get(name);
+	}
+
+
+	/** DO NOT TOUCH, add Type instance to helmetBuckets and use the type name as your key **/
 	@SubscribeEvent
 	public void registerBucketMaterials(BucketMaterialRegistryEvent.Pre event) {
-		BucketType iron = new BucketType("iron", Items.IRON_HELMET);
-		BucketType gold = new BucketType("gold", Items.GOLDEN_HELMET);
-		BucketType diamond = new BucketType("diamond", Items.DIAMOND_HELMET);
-		helmetBuckets.put(Integer.valueOf(buckets++), iron);
-		helmetBuckets.put(Integer.valueOf(buckets++), gold);
-		helmetBuckets.put(Integer.valueOf(buckets++), diamond);
+		BucketType iron = new BucketType("helmiron", Items.IRON_HELMET);
+		BucketType gold = new BucketType("helmgold", Items.GOLDEN_HELMET);
+		BucketType diamond = new BucketType("helmdiamond", Items.DIAMOND_HELMET);
+		this.addHelmet(iron);
+		this.addHelmet(gold);
+		this.addHelmet(diamond);
 
-		for(int key : helmetBuckets.keySet()) {
+		int buckets = 0;
+		for(String key : helmetBuckets.keySet()) {
 			BucketType type = helmetBuckets.get(key);
-			System.out.println(key + ": " + type.name + "   =  " + type.base.getUnlocalizedName());
-			BucketMaterialHandler.addMaterial(type.name, type.material, key);
+			System.out.println(key + ": " + type.name + " " + buckets + " = " + type.base.getUnlocalizedName());
+			BucketMaterialHandler.addMaterial(type.name, type.material, buckets++ );
 			validHelmets.put(type.base, type);
 		}
 	}
@@ -97,18 +105,42 @@ public class HelmBucket
 	public void onPlayerRightClick(PlayerInteractEvent event)
 	{
 		Item item = event.getItemStack().getItem();
+		ItemStack stack = event.getItemStack();
+		EntityPlayer player = event.getEntityPlayer();
 		if (validHelmets.keySet().contains(item))
 		{
 			BucketType type = validHelmets.get(item);
-			//event.getEntityPlayer().setItemStackToSlot(event.getEntityPlayer().getHeldItem(event.getHand()) == event.getEntityPlayer().getHeldItemMainhand() ? EntityEquipmentSlot.MAINHAND : EntityEquipmentSlot.OFFHAND, new ItemStack(Items.BUCKET, 1));
-			ActionResult<ItemStack> result = type.getBucket().useItemRightClick(event.getWorld(), event.getEntityPlayer(), event.getHand());
+			ActionResult<BlockPos> result = this.onItemRightClickEmpty(event.getWorld(), player, type);
 			if(result.getType() == EnumActionResult.SUCCESS) {
-				ItemStack stack = result.getResult();
-
-				System.out.println("Adding: " + stack);
-
-				this.addToInventory(event.getItemStack(), event.getEntityPlayer(), stack);
+				ItemStack result2 = ((com.builtbroken.mc.fluids.bucket.ItemFluidBucket)type.getBucket().getItem()).pickupFluid(player, type.getBucket(), type.material, event.getWorld(), result.getResult());
+				ItemStack stack2 = this.addToInventory(stack, player, result2);
+				player.setItemStackToSlot(player.getHeldItem(event.getHand()) == event.getEntityPlayer().getHeldItemMainhand() ? EntityEquipmentSlot.MAINHAND : EntityEquipmentSlot.OFFHAND, stack2);
 				event.setCanceled(true); // Don't switch helmet onto head (default right click)
+			}
+		} else if(event.getItemStack().getItem() == FluidModule.bucket) {
+			
+			// TODO: FIX THIS PART!!!
+			
+			BucketMaterial mat = BucketMaterialHandler.getMaterial(event.getItemStack().getItemDamage());
+			BucketType type = null;
+			for(BucketType type2 : helmetBuckets.values()) {
+				if(type2.material == mat) {
+					type = type2;
+				}
+			}
+			if(type != null) {
+				Item base = type.base;
+				
+				System.out.println("Someone is using a " + type.name);
+				
+				ActionResult<BlockPos> result = this.onItemRightClickFull(event.getWorld(), player, type);
+				if(result.getType() == EnumActionResult.SUCCESS) {
+					((com.builtbroken.mc.fluids.bucket.ItemFluidBucket)type.getBucket().getItem()).placeFluid(player, stack, event.getWorld(), result.getResult());
+					if(!player.capabilities.isCreativeMode)
+						player.setItemStackToSlot(player.getHeldItem(event.getHand()) == event.getEntityPlayer().getHeldItemMainhand() ? EntityEquipmentSlot.MAINHAND : EntityEquipmentSlot.OFFHAND, new ItemStack(base, 1));
+				}
+
+				event.setCanceled(true); // Don't allow normal replace code to run
 			}
 		}
 	}
@@ -131,7 +163,7 @@ public class HelmBucket
 		ALLOW_LEAK_TO_CAUSE_FIRES = config.getBoolean("AllowFires", "Leaking", ALLOW_LEAK_TO_CAUSE_FIRES, "If molten fluid leaks, should there be a chance to cause fires?");
 		LEAK_FIRE_CHANCE = config.getFloat("FireChance", "Leaking", LEAK_FIRE_CHANCE, 0f, 1f, "How often to cause fire from molten fluids leaking");
 
-		for(int key : helmetBuckets.keySet()) {
+		for(String key : helmetBuckets.keySet()) {
 			HelmetBucketMaterial mat = helmetBuckets.get(key).material;
 			mat.preventHotFluidUsage = PREVENT_HOT_FLUID_USAGE;
 			mat.damageBucketWithHotFluid = DAMAGE_BUCKET_WITH_HOT_FLUID;
@@ -176,14 +208,12 @@ public class HelmBucket
 	}
 
 	/* Determines whether liquid can be taken and returns raytrace position */
-	public ActionResult<BlockPos> onItemRightClick(World world, EntityPlayer player, ItemStack itemstack)
+	public ActionResult<BlockPos> onItemRightClickEmpty(World world, EntityPlayer player, BucketType type)
 	{
-		final boolean isBucketEmpty = false;
-		final BucketMaterial bucketMaterial = BucketMaterialHandler.getMaterial(itemstack.getItemDamage());
-
+		final BucketMaterial bucketMaterial = type.material;
 		if (bucketMaterial != null)
 		{
-			RayTraceResult movingobjectposition = this.rayTrace(world, player, isBucketEmpty);
+			RayTraceResult movingobjectposition = this.rayTrace(world, player, true);
 
 			if (movingobjectposition != null)
 			{
@@ -202,20 +232,98 @@ public class HelmBucket
 						return new ActionResult(EnumActionResult.PASS, null);
 					}
 
-					//Fill bucket code
-					if (isBucketEmpty)
+					if (player.canPlayerEdit(movingobjectposition.getBlockPos(), movingobjectposition.sideHit, type.getBucket()))
 					{
-						if (player.canPlayerEdit(movingobjectposition.getBlockPos(), movingobjectposition.sideHit, itemstack))
+						return new ActionResult(EnumActionResult.SUCCESS, movingobjectposition.getBlockPos());
+					}
+
+				}
+			}
+			return new ActionResult(EnumActionResult.PASS, null);
+		}
+		return new ActionResult(EnumActionResult.FAIL, null);
+	}
+
+	/* Determines whether liquid can be placed and returns raytrace position */
+	public ActionResult<BlockPos> onItemRightClickFull(World world, EntityPlayer player, BucketType type)
+	{
+		final BucketMaterial bucketMaterial = type.material;
+		if (bucketMaterial != null)
+		{
+			RayTraceResult movingobjectposition = this.rayTrace(world, player, true);
+
+			if (movingobjectposition != null)
+			{
+				if (movingobjectposition.typeOfHit == RayTraceResult.Type.BLOCK)
+				{
+					//Let fluid tiles handle there own logic
+					TileEntity tile = world.getTileEntity(movingobjectposition.getBlockPos());
+					if (tile != null && tile.hasCapability(CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY, movingobjectposition.sideHit))
+					{
+						return new ActionResult(EnumActionResult.PASS, null);
+					}
+
+					//Do not edit if blocked
+					if (!world.isBlockModifiable(player, movingobjectposition.getBlockPos()))
+					{
+						return new ActionResult(EnumActionResult.PASS, null);
+					}
+
+					final IBlockState state = world.getBlockState(movingobjectposition.getBlockPos());
+					final Block block = state.getBlock();
+					final Material blockMaterial = state.getMaterial();
+
+					if (player.canPlayerEdit(movingobjectposition.getBlockPos(), movingobjectposition.sideHit, type.getBucket()))
+					{
+						//Material handler
+						if (bucketMaterial.getHandler() != null)
+						{
+							return new ActionResult(EnumActionResult.SUCCESS, movingobjectposition.getBlockPos());
+						}
+						//Mod support handling
+						if (BucketHandler.blockToHandler.containsKey(block))
+						{
+							BucketHandler handler = BucketHandler.blockToHandler.get(block);
+							if (handler != null)
+							{
+								return new ActionResult(EnumActionResult.SUCCESS, movingobjectposition.getBlockPos());
+							}
+						}
+
+						if (!blockMaterial.isSolid() && block.isReplaceable(world, movingobjectposition.getBlockPos()))
 						{
 							return new ActionResult(EnumActionResult.SUCCESS, movingobjectposition.getBlockPos());
 						}
 					}
 
+					//Offset position based on side hit
+					BlockPos blockpos1 = movingobjectposition.getBlockPos().offset(movingobjectposition.sideHit);
+
+					if (player.canPlayerEdit(blockpos1, movingobjectposition.sideHit, type.getBucket()))
+					{
+						//Bucket material handling
+						if (bucketMaterial.getHandler() != null)
+						{
+							return new ActionResult(EnumActionResult.SUCCESS, movingobjectposition.getBlockPos());
+						}
+
+						//Mod support handling
+						if (BucketHandler.blockToHandler.containsKey(block))
+						{
+							BucketHandler handler = BucketHandler.blockToHandler.get(block);
+							if (handler != null)
+							{
+								return new ActionResult(EnumActionResult.SUCCESS, movingobjectposition.getBlockPos());
+							}
+						}
+						return new ActionResult(EnumActionResult.SUCCESS, movingobjectposition.getBlockPos());
+					}
+
 				}
 			}
-			return new ActionResult(EnumActionResult.PASS, itemstack);
+			return new ActionResult(EnumActionResult.PASS, null);
 		}
-		return new ActionResult(EnumActionResult.FAIL, itemstack);
+		return new ActionResult(EnumActionResult.FAIL, null);
 	}
 
 	public RayTraceResult rayTrace(World worldIn, EntityPlayer playerIn, boolean useLiquids)

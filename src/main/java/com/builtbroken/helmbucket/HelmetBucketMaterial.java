@@ -12,5 +12,12 @@ public class HelmetBucketMaterial extends BucketMaterial {
 	public HelmetBucketMaterial(String loadThisName) {
 		super(HelmBucket.PREFIX + "HelmBucket." + loadThisName, new ResourceLocation(HelmBucket.PREFIX + "helmbucket." + loadThisName));
 	}
+
+	@Override
+	public BucketMaterial getDamagedBucket(ItemStack stack) {
+		return HelmBucket.getHelmet(this.materialName.split("HelmBucket.")[1]).material;
+	}
+	
+	
    
 }

@@ -1,4 +1,4 @@
-item.helmbucket:helmBucket.name=Helmeimer
-item.helmbucket:helmBucket.iron.name=Eisenhelmeimer
-item.helmbucket:helmBucket.gold.name=Goldhelmeimer
-item.helmbucket:helmBucket.diamond.name=Diamanthelmeimer
+item.helmbucket:HelmBucket.name=Helmeimer
+item.helmbucket:HelmBucket.helmiron.name=Eisenhelmeimer
+item.helmbucket:HelmBucket.helmgold.name=Goldhelmeimer
+item.helmbucket:HelmBucket.helmdiamond.name=Diamanthelmeimer
