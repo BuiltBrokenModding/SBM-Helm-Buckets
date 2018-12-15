@@ -1,0 +1,16 @@
+[
+{
+  "modid": "helmbucket",
+  "name": "HelmBucket",
+  "description": "Allows the use of the helmet as a bucket.",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "url": "",
+  "updateUrl": "",
+  "authorList": ["its_meow", "DarkCow"],
+  "credits": "its_meow: Updating to 1.12, DarkCow: Original Version",
+  "logoFile": "helmbucket.png",
+  "screenshots": [],
+  "dependencies": []
+}
+]
