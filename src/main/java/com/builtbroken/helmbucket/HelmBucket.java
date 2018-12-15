@@ -4,24 +4,19 @@ import java.io.File;
 import java.util.HashMap;
 
 import com.builtbroken.mc.fluids.api.reg.BucketMaterialRegistryEvent;
+import com.builtbroken.mc.fluids.bucket.BucketMaterial;
 import com.builtbroken.mc.fluids.bucket.BucketMaterialHandler;
+import com.builtbroken.mc.fluids.mods.BucketHandler;
 
-import net.minecraft.advancements.CriteriaTriggers;
-import net.minecraft.block.BlockLiquid;
-import net.minecraft.block.material.Material;
-import net.minecraft.block.state.IBlockState;
+import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
-import net.minecraft.init.SoundEvents;
+import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.stats.StatList;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.EnumActionResult;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RayTraceResult;
@@ -30,6 +25,7 @@ import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.fluids.capability.CapabilityFluidHandler;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
@@ -65,31 +61,35 @@ public class HelmBucket
 	public static float CHANCE_TO_LEAK = 0.03f;
 	public static float LEAK_FIRE_CHANCE = 0.4f;
 
-	public static HashMap<Item, HelmetBucketMaterial> validHelmets = new HashMap<Item, HelmetBucketMaterial>();
+	public static HashMap<Item, BucketType> validHelmets = new HashMap<Item, BucketType>();
 
-	public static HashMap<Integer, HelmetBucketMaterial> helmetBuckets = new HashMap<Integer, HelmetBucketMaterial>();
+	public static HashMap<Integer, BucketType> helmetBuckets = new HashMap<Integer, BucketType>();
 	public static int buckets = 0;
 
 	public HelmBucket()
 	{
 		MinecraftForge.EVENT_BUS.register(this);
 	}
-	
-	
-	/** DO NOT TOUCH, add mats to helmetBuckets and use buckets++ as your key 
+
+
+	/** DO NOT TOUCH, add Type instance to helmetBuckets and use buckets++ as your key 
 	 *  (possibly get length of map and add 1? switch to arrayList?)
 	 *  Hashmap seems not the perfect structure right now
 	 ** maybe a Set of mats and keep the IDs internal? **/
 	@SubscribeEvent
 	public void registerBucketMaterials(BucketMaterialRegistryEvent.Pre event) {
-		for (BucketTypes type : BucketTypes.values()) {
-			HelmetBucketMaterial mat = new HelmetBucketMaterial(type);
-			helmetBuckets.put(Integer.valueOf(buckets++), mat);
-		}
+		BucketType iron = new BucketType("iron", Items.IRON_HELMET);
+		BucketType gold = new BucketType("gold", Items.GOLDEN_HELMET);
+		BucketType diamond = new BucketType("diamond", Items.DIAMOND_HELMET);
+		helmetBuckets.put(Integer.valueOf(buckets++), iron);
+		helmetBuckets.put(Integer.valueOf(buckets++), gold);
+		helmetBuckets.put(Integer.valueOf(buckets++), diamond);
+
 		for(int key : helmetBuckets.keySet()) {
-			HelmetBucketMaterial mat = helmetBuckets.get(key);
-			BucketMaterialHandler.addMaterial(mat.name, mat, key);
-			validHelmets.put(mat.base, mat);
+			BucketType type = helmetBuckets.get(key);
+			System.out.println(key + ": " + type.name + "   =  " + type.base.getUnlocalizedName());
+			BucketMaterialHandler.addMaterial(type.name, type.material, key);
+			validHelmets.put(type.base, type);
 		}
 	}
 
@@ -99,11 +99,15 @@ public class HelmBucket
 		Item item = event.getItemStack().getItem();
 		if (validHelmets.keySet().contains(item))
 		{
-			HelmetBucketMaterial mat = validHelmets.get(item);
-			ActionResult<ItemStack> result = mat.getBucket().useItemRightClick(event.getWorld(), event.getEntityPlayer(), event.getHand());
-			//ActionResult<ItemStack> result = onItemRightClick(event.getWorld(), event.getEntityPlayer(), event.getHand(), mat);
+			BucketType type = validHelmets.get(item);
+			//event.getEntityPlayer().setItemStackToSlot(event.getEntityPlayer().getHeldItem(event.getHand()) == event.getEntityPlayer().getHeldItemMainhand() ? EntityEquipmentSlot.MAINHAND : EntityEquipmentSlot.OFFHAND, new ItemStack(Items.BUCKET, 1));
+			ActionResult<ItemStack> result = type.getBucket().useItemRightClick(event.getWorld(), event.getEntityPlayer(), event.getHand());
 			if(result.getType() == EnumActionResult.SUCCESS) {
-				
+				ItemStack stack = result.getResult();
+
+				System.out.println("Adding: " + stack);
+
+				this.addToInventory(event.getItemStack(), event.getEntityPlayer(), stack);
 				event.setCanceled(true); // Don't switch helmet onto head (default right click)
 			}
 		}
@@ -128,7 +132,7 @@ public class HelmBucket
 		LEAK_FIRE_CHANCE = config.getFloat("FireChance", "Leaking", LEAK_FIRE_CHANCE, 0f, 1f, "How often to cause fire from molten fluids leaking");
 
 		for(int key : helmetBuckets.keySet()) {
-			HelmetBucketMaterial mat = helmetBuckets.get(key);
+			HelmetBucketMaterial mat = helmetBuckets.get(key).material;
 			mat.preventHotFluidUsage = PREVENT_HOT_FLUID_USAGE;
 			mat.damageBucketWithHotFluid = DAMAGE_BUCKET_WITH_HOT_FLUID;
 			mat.burnEntityWithHotFluid = BURN_ENTITY_WITH_HOT_FLUID;
@@ -146,86 +150,91 @@ public class HelmBucket
 
 	}
 
+
 	/*
-	public ActionResult<ItemStack> onItemRightClick(World worldIn, EntityPlayer playerIn, EnumHand handIn, HelmetBucketMaterial mat)
-    {
-		Item thisI = playerIn.getHeldItem(handIn).getItem();
-        ItemStack itemstack = playerIn.getHeldItem(handIn);
-        RayTraceResult raytraceresult = this.rayTrace(worldIn, playerIn, true);
-        ActionResult<ItemStack> ret = net.minecraftforge.event.ForgeEventFactory.onBucketUse(playerIn, worldIn, itemstack, raytraceresult);
-        if (ret != null) return ret;
-
-        if (raytraceresult == null)
-        {
-            return new ActionResult<ItemStack>(EnumActionResult.PASS, itemstack);
-        }
-        else if (raytraceresult.typeOfHit != RayTraceResult.Type.BLOCK)
-        {
-            return new ActionResult<ItemStack>(EnumActionResult.PASS, itemstack);
-        }
-        else
-        {
-            BlockPos blockpos = raytraceresult.getBlockPos();
-
-            if (!worldIn.isBlockModifiable(playerIn, blockpos))
-            {
-                return new ActionResult<ItemStack>(EnumActionResult.FAIL, itemstack);
-            }
-            else
-            {
-                if (!playerIn.canPlayerEdit(blockpos.offset(raytraceresult.sideHit), raytraceresult.sideHit, itemstack))
-                {
-                    return new ActionResult<ItemStack>(EnumActionResult.FAIL, itemstack);
-                }
-                else
-                {
-                    IBlockState iblockstate = worldIn.getBlockState(blockpos);
-                    Material material = iblockstate.getMaterial();
+	 * Bucket methods
+	 * 
+	 * 
+	 */
 
 
-                    ItemStack bucketStack
-                    if(result.getType() == EnumActionResult.SUCCESS) {
-                    	bucketStack = result.getResult();
-                    } else {
+	private static ItemStack addToInventory(ItemStack originalStack, EntityPlayer player, ItemStack newStack)
+	{
+		if (player.capabilities.isCreativeMode) {
+			return originalStack;
+		} else {
+			originalStack.shrink(1);
+			if (originalStack.isEmpty()) {
+				return newStack;
+			} else {
+				if (!player.inventory.addItemStackToInventory(newStack)) {
+					player.dropItem(newStack, false);
+				}
+				return originalStack;
+			}
+		}
+	}
 
-                    if (material == Material.WATER && ((Integer)iblockstate.getValue(BlockLiquid.LEVEL)).intValue() == 0)
-                    {
-                        worldIn.setBlockState(blockpos, Blocks.AIR.getDefaultState(), 11);
-                        playerIn.playSound(SoundEvents.ITEM_BUCKET_FILL, 1.0F, 1.0F);
-                        return new ActionResult<ItemStack>(EnumActionResult.SUCCESS, bucketStack);
-                    }
-                    else if (material == Material.LAVA && ((Integer)iblockstate.getValue(BlockLiquid.LEVEL)).intValue() == 0)
-                    {
-                        playerIn.playSound(SoundEvents.ITEM_BUCKET_FILL_LAVA, 1.0F, 1.0F);
-                        worldIn.setBlockState(blockpos, Blocks.AIR.getDefaultState(), 11);
-                        return new ActionResult<ItemStack>(EnumActionResult.SUCCESS, bucketStack);
-                    }
-                    else
-                    {
-                        return new ActionResult<ItemStack>(EnumActionResult.FAIL, itemstack);
-                    }
-                }
-            }
-        }
-    }
+	/* Determines whether liquid can be taken and returns raytrace position */
+	public ActionResult<BlockPos> onItemRightClick(World world, EntityPlayer player, ItemStack itemstack)
+	{
+		final boolean isBucketEmpty = false;
+		final BucketMaterial bucketMaterial = BucketMaterialHandler.getMaterial(itemstack.getItemDamage());
+
+		if (bucketMaterial != null)
+		{
+			RayTraceResult movingobjectposition = this.rayTrace(world, player, isBucketEmpty);
+
+			if (movingobjectposition != null)
+			{
+				if (movingobjectposition.typeOfHit == RayTraceResult.Type.BLOCK)
+				{
+					//Let fluid tiles handle there own logic
+					TileEntity tile = world.getTileEntity(movingobjectposition.getBlockPos());
+					if (tile != null && tile.hasCapability(CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY, movingobjectposition.sideHit))
+					{
+						return new ActionResult(EnumActionResult.PASS, null);
+					}
+
+					//Do not edit if blocked
+					if (!world.isBlockModifiable(player, movingobjectposition.getBlockPos()))
+					{
+						return new ActionResult(EnumActionResult.PASS, null);
+					}
+
+					//Fill bucket code
+					if (isBucketEmpty)
+					{
+						if (player.canPlayerEdit(movingobjectposition.getBlockPos(), movingobjectposition.sideHit, itemstack))
+						{
+							return new ActionResult(EnumActionResult.SUCCESS, movingobjectposition.getBlockPos());
+						}
+					}
+
+				}
+			}
+			return new ActionResult(EnumActionResult.PASS, itemstack);
+		}
+		return new ActionResult(EnumActionResult.FAIL, itemstack);
+	}
 
 	public RayTraceResult rayTrace(World worldIn, EntityPlayer playerIn, boolean useLiquids)
-    {
-        float f = playerIn.rotationPitch;
-        float f1 = playerIn.rotationYaw;
-        double d0 = playerIn.posX;
-        double d1 = playerIn.posY + (double)playerIn.getEyeHeight();
-        double d2 = playerIn.posZ;
-        Vec3d vec3d = new Vec3d(d0, d1, d2);
-        float f2 = MathHelper.cos(-f1 * 0.017453292F - (float)Math.PI);
-        float f3 = MathHelper.sin(-f1 * 0.017453292F - (float)Math.PI);
-        float f4 = -MathHelper.cos(-f * 0.017453292F);
-        float f5 = MathHelper.sin(-f * 0.017453292F);
-        float f6 = f3 * f4;
-        float f7 = f2 * f4;
-        double d3 = playerIn.getEntityAttribute(EntityPlayer.REACH_DISTANCE).getAttributeValue();
-        Vec3d vec3d1 = vec3d.addVector((double)f6 * d3, (double)f5 * d3, (double)f7 * d3);
-        return worldIn.rayTraceBlocks(vec3d, vec3d1, useLiquids, !useLiquids, false);
-    }*/
+	{
+		float f = playerIn.rotationPitch;
+		float f1 = playerIn.rotationYaw;
+		double d0 = playerIn.posX;
+		double d1 = playerIn.posY + (double)playerIn.getEyeHeight();
+		double d2 = playerIn.posZ;
+		Vec3d vec3d = new Vec3d(d0, d1, d2);
+		float f2 = MathHelper.cos(-f1 * 0.017453292F - (float)Math.PI);
+		float f3 = MathHelper.sin(-f1 * 0.017453292F - (float)Math.PI);
+		float f4 = -MathHelper.cos(-f * 0.017453292F);
+		float f5 = MathHelper.sin(-f * 0.017453292F);
+		float f6 = f3 * f4;
+		float f7 = f2 * f4;
+		double d3 = playerIn.getEntityAttribute(EntityPlayer.REACH_DISTANCE).getAttributeValue();
+		Vec3d vec3d1 = vec3d.addVector((double)f6 * d3, (double)f5 * d3, (double)f7 * d3);
+		return worldIn.rayTraceBlocks(vec3d, vec3d1, useLiquids, !useLiquids, false);
+	}
 
 }
