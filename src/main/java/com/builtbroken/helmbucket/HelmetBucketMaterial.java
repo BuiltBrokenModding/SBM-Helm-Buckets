@@ -1,23 +1,23 @@
 package com.builtbroken.helmbucket;
 
-import com.builtbroken.mc.fluids.FluidModule;
 import com.builtbroken.mc.fluids.bucket.BucketMaterial;
-
-import net.minecraft.item.Item;
+import com.builtbroken.mc.fluids.bucket.BucketMaterialMimic;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 
-public class HelmetBucketMaterial extends BucketMaterial {
-	
-	public HelmetBucketMaterial(String loadThisName) {
-		super(HelmBucket.PREFIX + "HelmBucket." + loadThisName, new ResourceLocation(HelmBucket.PREFIX + "helmbucket." + loadThisName));
-	}
+public class HelmetBucketMaterial extends BucketMaterialMimic
+{
+    public static final ResourceLocation FLUID_ICON = new ResourceLocation(HelmBucket.DOMAIN, "fluid_icon");
+    public HelmetBucketMaterial(String loadThisName, ItemStack itemStack)
+    {
+        super(HelmBucket.PREFIX + "HelmBucket." + loadThisName, itemStack);
+        invertBucketRender(); //Render icon upside down by default
+        fluidResourceLocation = FLUID_ICON;
+    }
 
-	@Override
-	public BucketMaterial getDamagedBucket(ItemStack stack) {
-		return HelmBucket.getHelmet(this.materialName.split("HelmBucket.")[1]).material;
-	}
-	
-	
-   
+    @Override
+    public BucketMaterial getDamagedBucket(ItemStack stack)
+    {
+        return this; //TODO implement a damage mechanic, for now return self to prevent loss of items
+    }
 }
