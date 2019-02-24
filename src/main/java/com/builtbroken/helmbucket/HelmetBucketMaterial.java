@@ -8,9 +8,9 @@ import net.minecraft.util.ResourceLocation;
 public class HelmetBucketMaterial extends BucketMaterialMimic
 {
     public static final ResourceLocation FLUID_ICON = new ResourceLocation(HelmBucket.DOMAIN, "fluid_icon");
-    public HelmetBucketMaterial(String loadThisName, ItemStack itemStack)
+    public HelmetBucketMaterial(ItemStack itemStack)
     {
-        super(HelmBucket.PREFIX + "HelmBucket." + loadThisName, itemStack);
+        super(itemStack.getTranslationKey(), itemStack);
         invertBucketRender(); //Render icon upside down by default
         fluidResourceLocation = FLUID_ICON;
     }

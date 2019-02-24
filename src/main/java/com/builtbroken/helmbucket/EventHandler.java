@@ -38,7 +38,7 @@ public class EventHandler
         //Convert helm to fluid bucket
         if (HelmBucket.ITEM_TO_MATERIAL.keySet().contains(heldItemStack.getItem()))
         {
-            final HelmetBucketMaterial bucketMaterial = HelmBucket.ID_TO_MATERIAL.get(heldItemStack.getItem());
+            final HelmetBucketMaterial bucketMaterial = HelmBucket.ITEM_TO_MATERIAL.get(heldItemStack.getItem());
             final ItemStack bucketStack = bucketMaterial.getNewBucketStack(heldItemStack);
 
             ActionResult<BlockPos> result = onItemRightClickEmpty(event.getWorld(), player, bucketStack, bucketMaterial);
