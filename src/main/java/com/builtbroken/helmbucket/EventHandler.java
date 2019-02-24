@@ -30,7 +30,7 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 public class EventHandler
 {
     @SubscribeEvent
-    public static void onPlayerRightClick(PlayerInteractEvent event)
+    public static void onPlayerRightClick(PlayerInteractEvent.RightClickItem event)
     {
         final ItemStack heldItemStack = event.getItemStack();
         final EntityPlayer player = event.getEntityPlayer();
@@ -61,18 +61,27 @@ public class EventHandler
             final BucketMaterial bucketMaterial = BucketMaterialHandler.getMaterial(event.getItemStack().getItemDamage());
             if (bucketMaterial instanceof HelmetBucketMaterial)
             {
-                ActionResult<BlockPos> result = onItemRightClickFull(event.getWorld(), player, heldItemStack, bucketMaterial);
-                if (result.getType() == EnumActionResult.SUCCESS)
+                if(!event.getWorld().isRemote)
                 {
-                    FluidModule.bucket.placeFluid(player, heldItemStack, event.getWorld(), result.getResult());
-                    if (!player.capabilities.isCreativeMode)
+                    ActionResult<ItemStack> result = FluidModule.bucket.onItemRightClick(event.getWorld(), event.getEntityPlayer(), event.getHand());
+                    boolean isEmpty = FluidModule.bucket.isEmpty(result.getResult());
+                    if (result.getType() == EnumActionResult.SUCCESS)
                     {
-                        ItemStack orginalStack = ((HelmetBucketMaterial)bucketMaterial).getOriginalStack(heldItemStack);
-                        player.setItemStackToSlot(player.getHeldItem(event.getHand()) == event.getEntityPlayer().getHeldItemMainhand() ? EntityEquipmentSlot.MAINHAND : EntityEquipmentSlot.OFFHAND, orginalStack);
-                    }
-                }
+                        if (!player.capabilities.isCreativeMode)
+                        {
+                            ItemStack originalStack = isEmpty ? ((HelmetBucketMaterial) bucketMaterial).getOriginalStack(heldItemStack) : null;
+                            if (originalStack == null)
+                            {
+                                originalStack = result.getResult();
+                            }
+                            EntityEquipmentSlot slot = player.getHeldItem(event.getHand()) == event.getEntityPlayer().getHeldItemMainhand() ? EntityEquipmentSlot.MAINHAND : EntityEquipmentSlot.OFFHAND;
+                            player.setItemStackToSlot(slot, originalStack);
 
-                event.setCanceled(true); // Don't allow normal replace code to run
+                        }
+                    }
+                    player.inventoryContainer.detectAndSendChanges();
+                    event.setCanceled(true); // Don't allow normal replace code to run
+                }
             }
         }
     }
