@@ -14,7 +14,7 @@ public class ConfigHelmBucket
     @Config.Comment("List of items to support as helm buckets. Restart is required as the fluid lib only generate materials for buckets on load.")
     @Config.Name("item_list")
     @Config.RequiresMcRestart
-    public static String[] ITEMS = new String[]{Items.LEATHER_HELMET.getRegistryName().toString()};
+    public static String[] ITEMS = new String[]{Items.LEATHER_HELMET.getRegistryName().toString(), Items.CHAINMAIL_HELMET.getRegistryName().toString()};
 
     @Config.LangKey("config." + HelmBucket.PREFIX + "items.ban.list")
     @Config.Comment("Should the item list be used as a list of items to not support. Restart is required as the fluid lib only generate materials for buckets on load.")
