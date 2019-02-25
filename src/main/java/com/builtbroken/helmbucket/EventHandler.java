@@ -2,7 +2,6 @@ package com.builtbroken.helmbucket;
 
 import com.builtbroken.mc.fluids.FluidModule;
 import com.builtbroken.mc.fluids.bucket.BucketMaterial;
-import com.builtbroken.mc.fluids.bucket.BucketMaterialHandler;
 import com.builtbroken.mc.fluids.mods.BucketHandler;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
@@ -53,35 +52,6 @@ public class EventHandler
 
                 //Cancel default event aka Don't switch helmet onto head
                 event.setCanceled(true);
-            }
-        }
-        //Convert fluid bucket to helm
-        else if (event.getItemStack().getItem() == FluidModule.bucket)
-        {
-            final BucketMaterial bucketMaterial = BucketMaterialHandler.getMaterial(event.getItemStack().getItemDamage());
-            if (bucketMaterial instanceof HelmetBucketMaterial)
-            {
-                if(!event.getWorld().isRemote)
-                {
-                    ActionResult<ItemStack> result = FluidModule.bucket.onItemRightClick(event.getWorld(), event.getEntityPlayer(), event.getHand());
-                    boolean isEmpty = FluidModule.bucket.isEmpty(result.getResult());
-                    if (result.getType() == EnumActionResult.SUCCESS)
-                    {
-                        if (!player.capabilities.isCreativeMode)
-                        {
-                            ItemStack originalStack = isEmpty ? ((HelmetBucketMaterial) bucketMaterial).getOriginalStack(heldItemStack) : null;
-                            if (originalStack == null)
-                            {
-                                originalStack = result.getResult();
-                            }
-                            EntityEquipmentSlot slot = player.getHeldItem(event.getHand()) == event.getEntityPlayer().getHeldItemMainhand() ? EntityEquipmentSlot.MAINHAND : EntityEquipmentSlot.OFFHAND;
-                            player.setItemStackToSlot(slot, originalStack);
-
-                        }
-                    }
-                    player.inventoryContainer.detectAndSendChanges();
-                    event.setCanceled(true); // Don't allow normal replace code to run
-                }
             }
         }
     }
