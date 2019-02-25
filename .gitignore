@@ -20,3 +20,11 @@ build
 # other
 eclipse
 run
+
+output/
+
+SBM-Helm-Bucket\.txt
+
+CompiledWith\.txt
+
+changelog\.html
